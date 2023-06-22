@@ -4,8 +4,8 @@ Save the sway session WIP
 ## References
 -   [Proof of concept for saving a sway session](https://github.com/gumieri/sway-session)
 ## Dependency
--   sway
--   swayipc
+-   [sway](https://github.com/swaywm/sway)
+-   [swayipc](https://github.com/JayceFayne/swayipc-rs)
 
 ### TODO
 #### 1. Version goals
