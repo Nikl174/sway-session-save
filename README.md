@@ -1,6 +1,8 @@
 # Sway Session Save
 Save the sway session WIP
 
+## References
+-   [Proof of concept for saving a sway session](https://github.com/gumieri/sway-session)
 ## Dependency
 -   sway
 -   swayipc
@@ -14,6 +16,7 @@ Save the sway session WIP
     -   terminals ??
 -   recreate the tree
 -   testing ??
+>   optional: get all running programms (like [here](https://github.com/gumieri/sway-session))
 
 #### 2. Version goals
 -   handle events from sway itself
