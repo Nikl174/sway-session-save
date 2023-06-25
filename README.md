@@ -13,6 +13,7 @@ Save the sway session WIP
     -   tree as data-structure
     -   xdg-shell name as app_id -> .desktop launch via 'gio'
     -   xorg name -> test a few programms for it's name
+    -   how to handle multible window instances?
     -   terminals ??
 -   recreate the tree
 -   testing ??
