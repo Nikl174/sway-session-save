@@ -1,5 +1,7 @@
 use swayipc::{Connection, Event, EventType, Fallible};
 
+mod tree_tools;
+mod sway_tree;
 // Example subscribung for events,
 // just copied from https://github.com/JayceFayne/swayipc-rs/blob/master/examples/hovered_window/src/main.rs 
 fn main() -> Fallible<()> {
