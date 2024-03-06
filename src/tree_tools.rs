@@ -1,33 +1,4 @@
 pub mod compositor_tree {
-    // Enmu for typical types of existing objects in a tiling compositor
-    pub enum CompositorNodeType {
-        // the actual window associated with a process PID
-        Window,
-        // a composition of multiple windows or even WindowCompositions itself
-        WindowComposition,
-        // a WindowComposition possible to be shown (simultaneously) on a display
-        Workspace,
-        // a physical output device/display where a Workspace can be shown
-        Output,
-        // the root Node/Object of the compositor
-        Root,
-        // fallback, should be used for ignored components in the compositor
-        None,
-    }
-
-    // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
-    // window state
-    pub trait CompositorNode {
-        // return the Type of the current root CompositorNode
-        fn get_node_type(&self) -> CompositorNodeType;
-
-        // Iterate over the subtrees returning the next child-node of the current node
-        fn next_subtree(&mut self) -> Option<dyn CompositorNode>;
-
-        fn get_properties(&self) -> session_tree::WindowCompositionProperties;
-    }
-} /* compositor_tree */
-
 pub(crate) mod session_tree {
 
     enum WindowCompositionLayout {
@@ -68,4 +39,34 @@ pub(crate) mod session_tree {
         properties: WindowCompositionProperties,
         window_compositions: Vec<WindowCompositionNode>,
     }
+
 } /* session_tree */
+    // Enmu for typical types of existing objects in a tiling compositor
+    pub enum CompositorNodeType {
+        // the actual window associated with a process PID
+        Window,
+        // a composition of multiple windows or even WindowCompositions itself
+        WindowComposition,
+        // a WindowComposition possible to be shown (simultaneously) on a display
+        Workspace,
+        // a physical output device/display where a Workspace can be shown
+        Output,
+        // the root Node/Object of the compositor
+        Root,
+        // fallback, should be used for ignored components in the compositor
+        None,
+    }
+
+    // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
+    // window state
+    pub trait CompositorNode {
+        // return the Type of the current root CompositorNode
+        fn get_node_type(&self) -> CompositorNodeType;
+
+        // Iterate over the subtrees returning the next child-node of the current node
+        fn next_subtree(&mut self) -> Option<dyn CompositorNode>;
+
+        fn get_properties(&self) -> session_tree::WindowCompositionProperties;
+    }
+} /* compositor_tree */
+
