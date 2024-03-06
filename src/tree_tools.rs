@@ -17,17 +17,14 @@ pub mod compositor_tree {
 
     // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
     // window state
-    pub trait CompositorTree {
-        // type of the childs in the tree, often the tree object it self implementing CompositorTree
-        type ChildCompositorNode;
-
+    pub trait CompositorNode {
         // return the Type of the current root CompositorNode
         fn get_node_type(&self) -> CompositorNodeType;
 
-        // Iterate over the tree returning the subtree of the current child (meaning current child
-        // is the new returned root of the subtree) and as a typical iterator advancing itself to
-        // the next child
-        fn next_subtree(&mut self) -> Option<Self::ChildCompositorNode>;
+        // Iterate over the subtrees returning the next child-node of the current node
+        fn next_subtree(&mut self) -> Option<dyn CompositorNode>;
+
+        fn get_properties(&self) -> session_tree::WindowCompositionProperties;
     }
 } /* compositor_tree */
 
