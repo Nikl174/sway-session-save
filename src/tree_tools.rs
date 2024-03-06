@@ -41,28 +41,34 @@ pub(crate) mod session_tree {
         None, // TODO: add single window enum or same as None?
     }
 
-    struct WindowCompositionProperties {}
+    struct ExtraProperties {}
+
+    pub(crate) struct WindowCompositionProperties {
+        uuid: i64,
+        output: String,
+        geometry: WindowCompositionGeometry,
+        layout: Option<WindowCompositionLayout>,
+        process_pid: Option<i32>,
+        extra_properties: Option<ExtraProperties>,
+    }
+
+    struct WindowCompositionGeometry {
+        x_position: i32,
+        y_position: i32,
+        width: i32,
+        heigth: i32,
+    }
 
     pub(crate) struct Session {
         workspaces: Vec<Workspace>,
     }
 
     pub(crate) struct Workspace {
-        output: String,
-        window_composition: WindowCompositionTree,
+        window_composition: WindowCompositionNode,
     }
 
-    struct WindowCompositionTree {
-        uuid: i64,
-        window_compositions: Vec<WindowCompositionTree>,
-        // TODO: wrap geometry to struct?
-        x_position: i32,
-        y_position: i32,
-        width: i32,
-        heigth: i32,
-        layout: Option<WindowCompositionLayout>,
-        properties: Option<WindowCompositionProperties>,
-        process_pid: Option<i32>,
+    pub(crate) struct WindowCompositionNode {
+        properties: WindowCompositionProperties,
+        window_compositions: Vec<WindowCompositionNode>,
     }
-    
 } /* session_tree */
