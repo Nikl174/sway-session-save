@@ -14,13 +14,13 @@ pub mod session_tree {
 
     pub struct WindowCompositionProperties<T>
     where
-        Option<T>: Programm,
+        T: Programm,
     {
         pub uuid: i64,
         pub layout: WindowCompositionLayout,
         pub output: Option<String>, // TODO: not optimal. only needed in Workspace
         pub geometry: WindowCompositionGeometry,
-        pub programm: T,
+        pub programm: Option<T>,
         // unneeded?
         pub process_pid: Option<i32>,
         pub extra_properties: Option<ExtraProperties>,
@@ -35,28 +35,28 @@ pub mod session_tree {
 
     pub(crate) struct Session<T>
     where
-        Option<T>: Programm,
+        T: Programm,
     {
-        workspaces: Vec<Workspace<T>>,
+        pub(crate) workspaces: Vec<Workspace<T>>,
     }
 
-    struct Workspace<T>
+    pub(crate) struct Workspace<T>
     where
-        Option<T>: Programm,
+        T: Programm,
     {
-        window_composition: WindowCompositionNode<T>,
+        pub(crate) window_composition: WindowCompositionNode<T>,
     }
 
-    struct WindowCompositionNode<T>
+    pub(crate) struct WindowCompositionNode<T>
     where
-        Option<T>: Programm,
+        T: Programm,
     {
-        properties: WindowCompositionProperties<T>,
-        window_compositions: Vec<WindowCompositionNode<T>>,
+        pub(crate) properties: WindowCompositionProperties<T>,
+        pub(crate) window_compositions: Vec<WindowCompositionNode<T>>,
     }
 } /* session_tree */
 pub mod compositor_tree {
-    use super::session_tree::{self, Programm, Session};
+    use super::session_tree::{self, Programm, Session, WindowCompositionNode};
 
     // Enmu for typical types of existing objects in a tiling compositor
     pub enum CompositorNodeType {
@@ -74,28 +74,48 @@ pub mod compositor_tree {
         None,
     }
 
+
     // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
     // window state
-    pub trait CompositorNode<T>
+    pub trait CompositorNode<T>: Sized
     where
-        Option<T>: Programm,
+        T: Programm,
     {
-        type Item;
         // return the Type of the current root CompositorNode
         fn get_node_type(&self) -> CompositorNodeType;
-
-        //// Iterate over the subtrees returning the next child-node of the current node
-        fn next_subtree(&mut self) -> Option<<Self as CompositorNode<T>>::Item>;
 
         // Returns the properties of the current node
         fn get_properties(&self) -> session_tree::WindowCompositionProperties<T>;
     }
 
-    pub fn construct_compositor_tree<T, C>(node_root: C) -> Session<T>
+    fn construct_composition_node<T, C>(node_root: C) -> WindowCompositionNode<T>
     where
-        Option<T>: Programm,
-        C: CompositorNode<T>,
+        T: Programm,
+        C: CompositorNode<T> + Iterator<Item = C>,
     {
+        // recursion base case
+        match node_root.get_node_type() {
+            CompositorNodeType::Window => {
+                return WindowCompositionNode {
+                    properties: node_root.get_properties(),
+                    window_compositions: Vec::new(),
+                }
+            }
+            _ => ()
+        }
+        let props = node_root.get_properties();
+        // recursion construct 
+        let node_vec: Vec<WindowCompositionNode<T>> = node_root.fold(Vec::new(), |mut acc, node| {
+            let props = node.get_properties();
+            let n_vec = construct_composition_node(node);
+            acc.push(WindowCompositionNode {properties: props, window_compositions: vec![n_vec]});
+            return acc
 
+        });
+
+        WindowCompositionNode {
+            properties: props,
+            window_compositions: node_vec,
+        }
     }
 } /* compositor_tree */

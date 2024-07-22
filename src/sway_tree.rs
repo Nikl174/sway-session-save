@@ -10,7 +10,7 @@ use swayipc::{Node, NodeType};
 struct SwayNode {
     node: Node,
     child_nodes: Box<dyn Iterator<Item = Node>>,
-    floating_nodes:Box<dyn Iterator<Item = Node>>,
+    floating_nodes: Box<dyn Iterator<Item = Node>>,
 }
 
 impl SwayNode {
@@ -23,22 +23,11 @@ impl SwayNode {
     }
 }
 
-//impl<'a> Iterator for SwayNode {
-//    type Item = SwayNode;
-//
-//    fn next(&mut self) -> Option<Self::Item> {
-//        match self.child_nodes.next() {
-//            Some(node) => Some(SwayNode::new(node)),
-//            None => match self.floating_nodes.next() {
-//                Some(f_node) => Some(SwayNode::new(f_node)),
-//                None => None,
-//            },
-//        }
-//    }
-//}
-
-impl<T: Programm> CompositorNode<T> for SwayNode {
-    type Item = SwayNode;
+impl<T> CompositorNode<T> for SwayNode
+where
+    T: Programm,
+{
+    //type Item = SwayNode;
     fn get_node_type(&self) -> CompositorNodeType {
         match self.node.node_type {
             NodeType::Root => CompositorNodeType::Root,
@@ -53,15 +42,6 @@ impl<T: Programm> CompositorNode<T> for SwayNode {
             }
             NodeType::Dockarea => CompositorNodeType::None,
             _ => CompositorNodeType::None,
-        }
-    }
-    fn next_subtree(&mut self) -> Option<SwayNode> {
-        match self.child_nodes.next() {
-            Some(node) => Some(SwayNode::new(node)),
-            None => match self.floating_nodes.next() {
-                Some(f_node) => Some(SwayNode::new(f_node)),
-                None => None,
-            },
         }
     }
 
@@ -87,6 +67,20 @@ impl<T: Programm> CompositorNode<T> for SwayNode {
             programm: None,
             process_pid: self.node.pid,
             extra_properties: None,
+        }
+    }
+}
+
+impl<'a> Iterator for SwayNode {
+    type Item = SwayNode;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.child_nodes.next() {
+            Some(node) => Some(SwayNode::new(node)),
+            None => match self.floating_nodes.next() {
+                Some(f_node) => Some(SwayNode::new(f_node)),
+                None => None,
+            },
         }
     }
 }
