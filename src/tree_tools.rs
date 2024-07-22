@@ -1,7 +1,8 @@
-pub mod compositor_tree {
-pub(crate) mod session_tree {
+pub mod session_tree {
 
-    enum WindowCompositionLayout {
+    pub trait Programm {}
+
+    pub enum WindowCompositionLayout {
         VerticalSplit,
         HorizontalSplit,
         Tabbed,
@@ -9,38 +10,54 @@ pub(crate) mod session_tree {
         None, // TODO: add single window enum or same as None?
     }
 
-    struct ExtraProperties {}
+    pub struct ExtraProperties {}
 
-    pub(crate) struct WindowCompositionProperties {
-        uuid: i64,
-        output: String,
-        geometry: WindowCompositionGeometry,
-        layout: Option<WindowCompositionLayout>,
-        process_pid: Option<i32>,
-        extra_properties: Option<ExtraProperties>,
+    pub struct WindowCompositionProperties<T>
+    where
+        Option<T>: Programm,
+    {
+        pub uuid: i64,
+        pub layout: WindowCompositionLayout,
+        pub output: Option<String>, // TODO: not optimal. only needed in Workspace
+        pub geometry: WindowCompositionGeometry,
+        pub programm: T,
+        // unneeded?
+        pub process_pid: Option<i32>,
+        pub extra_properties: Option<ExtraProperties>,
     }
 
-    struct WindowCompositionGeometry {
-        x_position: i32,
-        y_position: i32,
-        width: i32,
-        heigth: i32,
+    pub struct WindowCompositionGeometry {
+        pub x_position: i32,
+        pub y_position: i32,
+        pub width: i32,
+        pub heigth: i32,
     }
 
-    pub(crate) struct Session {
-        workspaces: Vec<Workspace>,
+    pub(crate) struct Session<T>
+    where
+        Option<T>: Programm,
+    {
+        workspaces: Vec<Workspace<T>>,
     }
 
-    pub(crate) struct Workspace {
-        window_composition: WindowCompositionNode,
+    struct Workspace<T>
+    where
+        Option<T>: Programm,
+    {
+        window_composition: WindowCompositionNode<T>,
     }
 
-    pub(crate) struct WindowCompositionNode {
-        properties: WindowCompositionProperties,
-        window_compositions: Vec<WindowCompositionNode>,
+    struct WindowCompositionNode<T>
+    where
+        Option<T>: Programm,
+    {
+        properties: WindowCompositionProperties<T>,
+        window_compositions: Vec<WindowCompositionNode<T>>,
     }
-
 } /* session_tree */
+pub mod compositor_tree {
+    use super::session_tree::{self, Programm, Session};
+
     // Enmu for typical types of existing objects in a tiling compositor
     pub enum CompositorNodeType {
         // the actual window associated with a process PID
@@ -59,14 +76,26 @@ pub(crate) mod session_tree {
 
     // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
     // window state
-    pub trait CompositorNode {
+    pub trait CompositorNode<T>
+    where
+        Option<T>: Programm,
+    {
+        type Item;
         // return the Type of the current root CompositorNode
         fn get_node_type(&self) -> CompositorNodeType;
 
-        // Iterate over the subtrees returning the next child-node of the current node
-        fn next_subtree(&mut self) -> Option<dyn CompositorNode>;
+        //// Iterate over the subtrees returning the next child-node of the current node
+        fn next_subtree(&mut self) -> Option<<Self as CompositorNode<T>>::Item>;
 
-        fn get_properties(&self) -> session_tree::WindowCompositionProperties;
+        // Returns the properties of the current node
+        fn get_properties(&self) -> session_tree::WindowCompositionProperties<T>;
+    }
+
+    pub fn construct_compositor_tree<T, C>(node_root: C) -> Session<T>
+    where
+        Option<T>: Programm,
+        C: CompositorNode<T>,
+    {
+
     }
 } /* compositor_tree */
-
