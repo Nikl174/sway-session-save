@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 swayipc = "3.0.1"
+json = "0.12.4"
