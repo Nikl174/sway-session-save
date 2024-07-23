@@ -7,7 +7,7 @@ use crate::tree_tools::{
 };
 use swayipc::{Node, NodeType};
 
-struct SwayNode {
+pub struct SwayNode {
     node: Node,
     child_nodes: Box<dyn Iterator<Item = Node>>,
     floating_nodes: Box<dyn Iterator<Item = Node>>,
