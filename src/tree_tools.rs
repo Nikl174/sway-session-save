@@ -110,7 +110,7 @@ pub mod session_tree {
 } /* session_tree */
 pub mod compositor_tree {
 
-    use std::{error::Error, io};
+    use std::io;
 
     use json::{object, JsonValue};
 
