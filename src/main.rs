@@ -1,6 +1,6 @@
+use json::JsonValue;
 use sway_tree::SwayNode;
 use swayipc::{Connection, Event, EventType, Fallible};
-use tree_tools::compositor_tree::convert_composition_node_to_json;
 
 pub mod tree_tools;
 mod sway_tree;
@@ -22,8 +22,8 @@ fn main() -> Fallible<()> {
         .get_tree()
         .expect("Couldn't get the sway tree");
     //print!("{:?}",tree_node.node_type);
-    let node = tree_tools::compositor_tree::construct_composition_node::<SwayNode, _>(SwayNode::new(tree_node));
-    let json = convert_composition_node_to_json(node);
+    let node = tree_tools::compositor_tree::construct_session::<SwayNode, _>(SwayNode::new(tree_node)).unwrap();
+    let json: JsonValue = node.into();
     println!("{}",json);
 
     Ok(())

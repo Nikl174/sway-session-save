@@ -7,10 +7,32 @@ use crate::tree_tools::{
 };
 use swayipc::{Node, NodeType};
 
+trait ClonableIterator: Iterator {
+    fn clone_box(&self) -> Box<dyn ClonableIterator<Item = Self::Item>>;
+}
+
+impl<T, I> ClonableIterator for T
+where
+    T: Iterator<Item = I> + Clone + 'static,
+{
+    fn clone_box(&self) -> Box<dyn ClonableIterator<Item = I>> {
+        Box::new(self.clone())
+    }
+}
 pub struct SwayNode {
     node: Node,
-    child_nodes: Box<dyn Iterator<Item = Node>>,
-    floating_nodes: Box<dyn Iterator<Item = Node>>,
+    child_nodes: Box<dyn ClonableIterator<Item = Node>>,
+    floating_nodes: Box<dyn ClonableIterator<Item = Node>>,
+}
+
+impl Clone for SwayNode {
+    fn clone(&self) -> Self {
+        SwayNode {
+            node: self.node.clone(),
+            child_nodes: self.child_nodes.clone_box(),
+            floating_nodes: self.floating_nodes.clone_box(),
+        }
+    }
 }
 
 impl SwayNode {
@@ -32,7 +54,7 @@ where
         match self.node.node_type {
             NodeType::Root => CompositorNodeType::Root,
             NodeType::Workspace => CompositorNodeType::Workspace,
-            NodeType::Output => CompositorNodeType::Output,
+            //NodeType::Output => CompositorNodeType::Output,
             NodeType::Con | NodeType::FloatingCon => {
                 if self.node.nodes.is_empty() {
                     CompositorNodeType::Window
@@ -56,18 +78,22 @@ where
         };
         WindowCompositionProperties {
             uuid: self.node.id,
-            output: self.node.output.clone(),
+            //output: self.node.output.clone(),
             geometry: WindowCompositionGeometry {
-                x_position: self.node.geometry.x,
-                y_position: self.node.geometry.x,
-                width: self.node.geometry.width,
-                heigth: self.node.geometry.height,
+                x_position: self.node.rect.x,
+                y_position: self.node.rect.y,
+                width: self.node.rect.width,
+                heigth: self.node.rect.height,
             },
             layout,
             programm: None,
             process_pid: self.node.pid,
             extra_properties: None,
         }
+    }
+
+    fn get_ouptut(&self) -> Option<String> {
+        self.node.output.clone()
     }
 }
 
