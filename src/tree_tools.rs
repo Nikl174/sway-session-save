@@ -210,11 +210,10 @@ pub mod compositor_tree {
         // recursion construct
         let node_vec: Vec<WindowCompositionNode<T>> =
             node_root.fold(Vec::new(), |mut acc, node| {
-                let props = node.get_properties();
                 let n_vec = construct_composition_node(node);
                 acc.push(WindowCompositionNode {
-                    properties: props,
-                    window_compositions: vec![n_vec],
+                    properties: n_vec.properties,
+                    window_compositions: n_vec.window_compositions,
                 });
                 return acc;
             });
@@ -243,7 +242,9 @@ pub mod compositor_tree {
                     }],
                 })
             }
-            CompositorNodeType::WindowComposition | CompositorNodeType::Workspace | CompositorNodeType::None => {
+            CompositorNodeType::WindowComposition
+            | CompositorNodeType::Workspace
+            | CompositorNodeType::None => {
                 let output = node_root.get_ouptut();
                 let comp_node = construct_composition_node(node_root);
                 return Ok(Session {
@@ -270,10 +271,10 @@ pub mod compositor_tree {
 
     impl<T: Programm> Into<JsonValue> for WindowCompositionNode<T> {
         fn into(self) -> JsonValue {
-                let node_type: JsonValue = match self.window_compositions.is_empty() {
-                    true => CompositorNodeType::Window.into(),
-                    false => CompositorNodeType::WindowComposition.into(), 
-                };
+            let node_type: JsonValue = match self.window_compositions.is_empty() {
+                true => CompositorNodeType::Window.into(),
+                false => CompositorNodeType::WindowComposition.into(),
+            };
             let props: JsonValue = self.clone().properties.into();
             let node_iter = self.into_iter();
             let json_data = node_iter.fold(json::JsonValue::new_array(), |mut acc, node| {
