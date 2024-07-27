@@ -5,7 +5,7 @@ use crate::tree_tools::{
         Programm, WindowCompositionGeometry, WindowCompositionLayout, WindowCompositionProperties,
     },
 };
-use swayipc::{Node, NodeType};
+use swayipc::{Node, NodeType, Output};
 
 trait ClonableIterator: Iterator {
     fn clone_box(&self) -> Box<dyn ClonableIterator<Item = Self::Item>>;
@@ -102,7 +102,18 @@ impl<'a> Iterator for SwayNode {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.child_nodes.next() {
-            Some(node) => Some(SwayNode::new(node)),
+            Some(mut node) => match node.node_type {
+                NodeType::Output => {
+                    let mut vec_node: Vec<Node> = self.clone().child_nodes.collect();
+                    vec_node.append(&mut node.nodes);
+                    let mut vec_float_node: Vec<Node> = self.clone().floating_nodes.collect();
+                    vec_float_node.append(&mut node.floating_nodes);
+                    self.child_nodes = Box::new(vec_node.into_iter());
+                    self.floating_nodes = Box::new(vec_float_node.into_iter());
+                    self.next()
+                },
+                _ => Some(SwayNode::new(node)),
+            },
             None => match self.floating_nodes.next() {
                 Some(f_node) => Some(SwayNode::new(f_node)),
                 None => None,
