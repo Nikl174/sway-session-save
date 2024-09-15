@@ -1,0 +1,60 @@
+@startuml
+package "Compositor Interfaces"{ 
+  interface CompositionNode<T> {
+    get_node_type() -> CompositionNodeType
+    get_properties() -> WindowCompositionProperties<T>
+    get_output() -> Option<String>
+  }
+  interface Iterator <type = Item> {
+    next(&mut self) -> Option<Self::Item>
+  }
+  interface Clone {
+    clone(&self) -> Self 
+  } 
+  Clone <|.. CompositionNode : "Self must implement"
+  Iterator <|.. CompositionNode : "Self must implement"
+}
+
+package "Session Config"{ 
+  struct Session <<T: Programm>> {
+      workspaces: Vec<Workspace<T>>
+  }
+  struct Workspace <<T: Programm>>{
+    window_composition: WindowCompositionNode<T>
+    output: Option<String>
+  }
+  struct WindowCompositionNode <<T: Programm>> {
+    properties: WindowCompositionProperties<T>
+    window_compositions: Vec<WindowCompositionNode<T>>
+  }
+}
+
+
+interface ClonableIterator {
+  clone_box(self) -> Box<dyn ClonableIterator<Item = Self::Item>>
+}
+note top of ClonableIterator : Intermediate trait for implementing the Clone-Trait 
+
+struct SwayNode {
+  node: swayipc:Node
+  child_nodes: Box<dyn ClonableIterator<Item = Node>>
+  floating_nodes: Box<dyn ClonableIterator<Item = Node>>
+}
+
+struct i3Node {
+  example
+}
+struct ArbitraryNode {
+  example
+}
+
+Session *-- Workspace
+Workspace *-- WindowCompositionNode
+ClonableIterator *-- SwayNode
+Iterator <|.. ClonableIterator : "Self must implement"
+
+CompositionNode <|.. SwayNode : Implement
+CompositionNode <|.. i3Node : Implement
+CompositionNode <|.. ArbitraryNode : Implement
+
+@enduml
