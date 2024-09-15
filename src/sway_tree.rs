@@ -2,7 +2,8 @@ use crate::tree_tools::{
     self,
     compositor_tree::{CompositorNode, CompositorNodeType},
     session_tree::{
-        Programm, WindowCompositionGeometry, WindowCompositionLayout, WindowCompositionProperties,
+        abstract_programm::Programm, WindowCompositionGeometry, WindowCompositionLayout,
+        WindowCompositionProperties,
     },
 };
 use swayipc::{Node, NodeType, Output};
@@ -111,7 +112,7 @@ impl<'a> Iterator for SwayNode {
                     self.child_nodes = Box::new(vec_node.into_iter());
                     self.floating_nodes = Box::new(vec_float_node.into_iter());
                     self.next()
-                },
+                }
                 _ => Some(SwayNode::new(node)),
             },
             None => match self.floating_nodes.next() {

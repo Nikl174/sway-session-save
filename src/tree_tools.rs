@@ -1,10 +1,56 @@
 pub mod session_tree {
+    use std::{
+        io::Error,
+        string::{self, String},
+    };
+
+    use abstract_programm::Programm;
     use json::{object, JsonValue};
 
-    // TODO: IMPLEMENT programm abstraction
-    pub trait Programm: Clone {}
+    pub mod abstract_programm {
+        use std::{error::Error, fmt::Display, future::Future, io};
 
-    impl<T: std::clone::Clone> Programm for T {}
+        #[derive(Debug)]
+        pub struct ReconstructError;
+
+        impl Display for ReconstructError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "Error while reconstruction")
+            }
+        }
+
+        impl Error for ReconstructError {}
+
+        // TODO: IMPLEMENT programm abstraction
+        pub trait Programm {
+            fn start(self) -> Result<bool, ReconstructError>;
+            fn get_name(&self) -> String;
+            fn get_app_id(&self) -> String;
+        }
+
+        impl<T: std::clone::Clone> Programm for T {
+            fn start(self) -> Result<bool, ReconstructError> {
+                todo!()
+            }
+
+            fn get_name(&self) -> String {
+                todo!()
+            }
+
+            fn get_app_id(&self) -> String {
+                todo!()
+            }
+        }
+
+        pub fn construct_programm_from_app_id(
+            app_id: &str,
+        ) -> Result<Box<dyn Programm>, io::Error> {
+            //match app_id {
+            //    _ => 42
+            //};
+            todo!()
+        }
+    }
 
     #[derive(Debug, Clone, Copy)]
     pub enum WindowCompositionLayout {
@@ -21,7 +67,7 @@ pub mod session_tree {
     #[derive(Debug, Clone)]
     pub struct WindowCompositionProperties<T>
     where
-        T: Programm,
+        T: abstract_programm::Programm,
     {
         pub uuid: i64,
         pub layout: WindowCompositionLayout,
@@ -33,31 +79,6 @@ pub mod session_tree {
         pub extra_properties: Option<ExtraProperties>,
     }
 
-    //pub fn composition_properties_to_json<T: Programm>(
-    //    props: &WindowCompositionProperties<T>,
-    //) -> JsonValue {
-    //    object! {
-    //        uuid: props.uuid,
-    //        layout: props.layout,
-    //        geometry: object! {
-    //            x_position: props.geometry.x_position,
-    //            y_position: props.geometry.y_position,
-    //            width: props.geometry.width,
-    //            heigth: props.geometry.heigth,
-    //        },
-    //        output: match &props.output {
-    //            None => "null".to_string(),
-    //            Some(o) => o.clone(),
-    //        },
-    //        // TODO: IMPLEMENT programm abstraction
-    //        programm: "NOT IMPLEMENTED",
-    //        process_pid: json::stringify(props.process_pid),
-    //        extra_properties: "NOT_USED",
-    //
-    //
-    //    }
-    //}
-
     #[derive(Debug, Clone)]
     pub struct WindowCompositionGeometry {
         pub x_position: i32,
@@ -68,14 +89,14 @@ pub mod session_tree {
 
     pub struct Session<T>
     where
-        T: Programm,
+        T: abstract_programm::Programm,
     {
         pub(crate) workspaces: Vec<Workspace<T>>,
     }
 
     pub(crate) struct Workspace<T>
     where
-        T: Programm,
+        T: abstract_programm::Programm,
     {
         pub(crate) window_composition: WindowCompositionNode<T>,
         pub output: Option<String>,
@@ -84,7 +105,7 @@ pub mod session_tree {
     #[derive(Debug, Clone)]
     pub struct WindowCompositionNode<T>
     where
-        T: Programm,
+        T: abstract_programm::Programm,
     {
         pub(crate) properties: WindowCompositionProperties<T>,
         pub(crate) window_compositions: Vec<WindowCompositionNode<T>>,
@@ -141,7 +162,9 @@ pub mod compositor_tree {
 
     use json::{object, JsonValue};
 
-    use super::session_tree::{self, Programm, Session, WindowCompositionNode, Workspace};
+    use super::session_tree::{
+        self, abstract_programm::Programm, Session, WindowCompositionNode, Workspace,
+    };
 
     // Enmu for typical types of existing objects in a tiling compositor
     pub enum CompositorNodeType {
@@ -159,24 +182,12 @@ pub mod compositor_tree {
         None,
     }
 
-    impl Into<JsonValue> for CompositorNodeType {
-        fn into(self) -> JsonValue {
-            match self {
-                CompositorNodeType::Window => "Window".into(),
-                CompositorNodeType::WindowComposition => "WindowComposition".into(),
-                CompositorNodeType::Workspace => "Workspace".into(),
-                //CompositorNodeType::Output => "Output".into(),
-                CompositorNodeType::Root => "Root".into(),
-                CompositorNodeType::None => JsonValue::Null,
-            }
-        }
-    }
-
     // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
     // window state
     pub trait CompositorNode<T>: Sized + Clone
     where
         T: Programm,
+        Self: Iterator,
     {
         // return the Type of the current root CompositorNode
         fn get_node_type(&self) -> CompositorNodeType;
@@ -268,8 +279,25 @@ pub mod compositor_tree {
             }
         }
     }
+    
+    // JSON PARSING
+    impl Into<JsonValue> for CompositorNodeType {
+        fn into(self) -> JsonValue {
+            match self {
+                CompositorNodeType::Window => "Window".into(),
+                CompositorNodeType::WindowComposition => "WindowComposition".into(),
+                CompositorNodeType::Workspace => "Workspace".into(),
+                //CompositorNodeType::Output => "Output".into(),
+                CompositorNodeType::Root => "Root".into(),
+                CompositorNodeType::None => JsonValue::Null,
+            }
+        }
+    }
 
-    impl<T: Programm> Into<JsonValue> for WindowCompositionNode<T> {
+    impl<T: Programm> Into<JsonValue> for WindowCompositionNode<T>
+    where
+        T: Clone,
+    {
         fn into(self) -> JsonValue {
             let node_type: JsonValue = match self.window_compositions.is_empty() {
                 true => CompositorNodeType::Window.into(),
@@ -287,7 +315,10 @@ pub mod compositor_tree {
         }
     }
 
-    impl<T: Programm> Into<JsonValue> for Workspace<T> {
+    impl<T: Programm> Into<JsonValue> for Workspace<T>
+    where
+        T: Clone,
+    {
         fn into(self) -> JsonValue {
             let node_type: JsonValue = CompositorNodeType::Workspace.into();
             let nodes: JsonValue = self.window_composition.window_compositions.into();
@@ -297,7 +328,10 @@ pub mod compositor_tree {
         }
     }
 
-    impl<T: Programm> Into<JsonValue> for Session<T> {
+    impl<T: Programm> Into<JsonValue> for Session<T>
+    where
+        T: Clone,
+    {
         fn into(self) -> JsonValue {
             let node_type: JsonValue = CompositorNodeType::Root.into();
 
