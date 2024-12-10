@@ -2,8 +2,8 @@ use crate::tree_tools::{
     self,
     compositor_tree::{CompositorNode, CompositorNodeType},
     session_tree::{
-        abstract_programm::Programm, WindowCompositionGeometry, WindowCompositionLayout,
-        WindowCompositionProperties,
+        abstract_programm::{construct_programm_from_app_id, DefaultProgramm, Programm},
+        WindowCompositionGeometry, WindowCompositionLayout, WindowCompositionProperties,
     },
 };
 use swayipc::{Node, NodeType, Output};
@@ -46,10 +46,7 @@ impl SwayNode {
     }
 }
 
-impl<T> CompositorNode<T> for SwayNode
-where
-    T: Programm,
-{
+impl CompositorNode for SwayNode {
     //type Item = SwayNode;
     fn get_node_type(&self) -> CompositorNodeType {
         match self.node.node_type {
@@ -68,7 +65,7 @@ where
         }
     }
 
-    fn get_properties(&self) -> tree_tools::session_tree::WindowCompositionProperties<T> {
+    fn get_properties(&self) -> tree_tools::session_tree::WindowCompositionProperties {
         let layout: WindowCompositionLayout = match self.node.layout {
             swayipc::NodeLayout::None => WindowCompositionLayout::None,
             swayipc::NodeLayout::SplitH => WindowCompositionLayout::HorizontalSplit,
@@ -87,7 +84,10 @@ where
                 heigth: self.node.rect.height,
             },
             layout,
-            programm: None,
+            programm: match &self.node.app_id {
+                Some(app) => Some(construct_programm_from_app_id(app.clone(), "".to_string())),
+                None => None,
+            },
             process_pid: self.node.pid,
             extra_properties: None,
         }

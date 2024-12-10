@@ -23,7 +23,7 @@ fn main() -> Fallible<()> {
         .get_tree()
         .expect("Couldn't get the sway tree");
     //print!("{:?}",tree_node.node_type);
-    let node = tree_tools::compositor_tree::construct_session::<SwayNode, _>(SwayNode::new(tree_node)).unwrap();
+    let node = tree_tools::compositor_tree::construct_session::<SwayNode>(SwayNode::new(tree_node)).unwrap();
     let json: JsonValue = node.into();
     println!("{}",json);
 

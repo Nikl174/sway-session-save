@@ -1,10 +1,7 @@
 pub mod session_tree {
-    use std::{
-        io::Error,
-        string::{self, String},
-    };
+    use std::string::String;
 
-    use abstract_programm::Programm;
+    use abstract_programm::{construct_programm_from_app_id, DefaultProgramm, Programm};
     use json::{object, JsonValue};
 
     pub mod abstract_programm {
@@ -22,33 +19,74 @@ pub mod session_tree {
         impl Error for ReconstructError {}
 
         // TODO: IMPLEMENT programm abstraction
-        pub trait Programm {
+        pub trait Programm: DynClone {
             fn start(self) -> Result<bool, ReconstructError>;
             fn get_name(&self) -> String;
             fn get_app_id(&self) -> String;
         }
 
-        impl<T: std::clone::Clone> Programm for T {
+        #[derive(Debug, Clone)]
+        pub struct DefaultProgramm {
+            pub launch_args: String,
+            pub app_id: String,
+        }
+
+        impl Programm for DefaultProgramm {
             fn start(self) -> Result<bool, ReconstructError> {
                 todo!()
             }
 
             fn get_name(&self) -> String {
-                todo!()
+                let mut launch_cmd: String = self.app_id.clone();
+                launch_cmd.push_str(" ");
+                launch_cmd.push_str(&self.launch_args);
+
+                return launch_cmd;
             }
 
             fn get_app_id(&self) -> String {
-                todo!()
+                return self.app_id.clone();
             }
         }
 
-        pub fn construct_programm_from_app_id(
-            app_id: &str,
-        ) -> Result<Box<dyn Programm>, io::Error> {
-            //match app_id {
-            //    _ => 42
-            //};
-            todo!()
+        //impl<T: std::clone::Clone> Programm for T {
+        //    async fn start(self) -> Result<bool, ReconstructError> {
+        //        todo!()
+        //    }
+        //
+        //    fn get_name(&self) -> String {
+        //        todo!()
+        //    }
+        //
+        //    fn get_app_id(&self) -> String {
+        //        todo!()
+        //    }
+        //}
+        pub trait DynClone {
+            // Optional if you want them           vvvvvvvvvvvvv
+            fn dyn_clone(&self) -> Box<dyn Programm /* + Send + Sync + 'static */>;
+            // Implicitly present already                          ^^^^^^^
+        }
+
+        //         vvvvvvv Implicitly present
+        impl<T: Programm + Clone + 'static> DynClone for T {
+            fn dyn_clone(&self) -> Box<dyn Programm> {
+                Box::new(self.clone())
+            }
+        }
+        impl Clone for Box<dyn Programm> {
+            fn clone(&self) -> Self {
+                (**self).dyn_clone()
+            }
+        }
+
+        pub fn construct_programm_from_app_id(app_id: String, name: String) -> Box<dyn Programm> {
+            match app_id {
+                _ => Box::new(DefaultProgramm {
+                    launch_args: name,
+                    app_id,
+                }),
+            }
         }
     }
 
@@ -64,16 +102,13 @@ pub mod session_tree {
     #[derive(Debug, Clone, Copy)]
     pub struct ExtraProperties {}
 
-    #[derive(Debug, Clone)]
-    pub struct WindowCompositionProperties<T>
-    where
-        T: abstract_programm::Programm,
-    {
+    #[derive(Clone)]
+    pub struct WindowCompositionProperties {
         pub uuid: i64,
         pub layout: WindowCompositionLayout,
         pub geometry: WindowCompositionGeometry,
         //pub output: Option<String>, // TODO: not optimal. only needed in Workspace ?
-        pub programm: Option<T>,
+        pub programm: Option<Box<dyn Programm>>,
         // unneeded?
         pub process_pid: Option<i32>,
         pub extra_properties: Option<ExtraProperties>,
@@ -87,30 +122,22 @@ pub mod session_tree {
         pub heigth: i32,
     }
 
-    pub struct Session<T>
-    where
-        T: abstract_programm::Programm,
-    {
-        pub(crate) workspaces: Vec<Workspace<T>>,
+    pub struct Session {
+        pub(crate) workspaces: Vec<Workspace>,
     }
 
-    pub(crate) struct Workspace<T>
-    where
-        T: abstract_programm::Programm,
-    {
-        pub(crate) window_composition: WindowCompositionNode<T>,
+    pub(crate) struct Workspace {
+        pub(crate) window_composition: WindowCompositionNode,
         pub output: Option<String>,
     }
 
-    #[derive(Debug, Clone)]
-    pub struct WindowCompositionNode<T>
-    where
-        T: abstract_programm::Programm,
-    {
-        pub(crate) properties: WindowCompositionProperties<T>,
-        pub(crate) window_compositions: Vec<WindowCompositionNode<T>>,
+    #[derive(Clone)]
+    pub struct WindowCompositionNode {
+        pub(crate) properties: WindowCompositionProperties,
+        pub(crate) window_compositions: Vec<WindowCompositionNode>,
     }
 
+    // JSON PARSING
     impl Into<JsonValue> for WindowCompositionLayout {
         fn into(self) -> JsonValue {
             match self {
@@ -123,8 +150,12 @@ pub mod session_tree {
         }
     }
 
-    impl<T: Clone> Into<JsonValue> for WindowCompositionProperties<T> {
+    impl Into<JsonValue> for WindowCompositionProperties {
         fn into(self) -> JsonValue {
+            let programm_str: String = match self.programm {
+                Some(prog) => prog.get_name(),
+                None => "".to_string(),
+            };
             object! {
             uuid: self.uuid,
             layout: self.layout,
@@ -139,17 +170,17 @@ pub mod session_tree {
             //    Some(o) => o.clone(),
             //},
             // TODO: IMPLEMENT programm abstraction
-            programm: "NOT IMPLEMENTED",
+            programm: programm_str,
             process_pid: json::stringify(self.process_pid),
             extra_properties: "NOT_USED",
             }
         }
     }
 
-    impl<T: Programm> IntoIterator for WindowCompositionNode<T> {
-        type Item = WindowCompositionNode<T>;
+    impl IntoIterator for WindowCompositionNode {
+        type Item = WindowCompositionNode;
 
-        type IntoIter = std::vec::IntoIter<WindowCompositionNode<T>>;
+        type IntoIter = std::vec::IntoIter<WindowCompositionNode>;
 
         fn into_iter(self) -> Self::IntoIter {
             self.window_compositions.into_iter()
@@ -184,16 +215,15 @@ pub mod compositor_tree {
 
     // Trait for an compositor data structure/'tree' which is needed for parsing and saving the
     // window state
-    pub trait CompositorNode<T>: Sized + Clone
+    pub trait CompositorNode: Sized + Clone
     where
-        T: Programm,
         Self: Iterator,
     {
         // return the Type of the current root CompositorNode
         fn get_node_type(&self) -> CompositorNodeType;
 
         // Returns the properties of the current node
-        fn get_properties(&self) -> session_tree::WindowCompositionProperties<T>;
+        fn get_properties(&self) -> session_tree::WindowCompositionProperties;
 
         // Returns the output of the current Node as a string-representation or None, if node has
         // no output
@@ -202,10 +232,9 @@ pub mod compositor_tree {
         fn get_ouptut(&self) -> Option<String>;
     }
 
-    pub fn construct_composition_node<T, C>(node_root: C) -> WindowCompositionNode<T>
+    pub fn construct_composition_node<C>(node_root: C) -> WindowCompositionNode
     where
-        T: Programm,
-        C: CompositorNode<T> + Iterator<Item = C>,
+        C: CompositorNode + Iterator<Item = C>,
     {
         // recursion base case
         match node_root.get_node_type() {
@@ -219,15 +248,14 @@ pub mod compositor_tree {
         }
         let props = node_root.get_properties();
         // recursion construct
-        let node_vec: Vec<WindowCompositionNode<T>> =
-            node_root.fold(Vec::new(), |mut acc, node| {
-                let n_vec = construct_composition_node(node);
-                acc.push(WindowCompositionNode {
-                    properties: n_vec.properties,
-                    window_compositions: n_vec.window_compositions,
-                });
-                return acc;
+        let node_vec: Vec<WindowCompositionNode> = node_root.fold(Vec::new(), |mut acc, node| {
+            let n_vec = construct_composition_node(node);
+            acc.push(WindowCompositionNode {
+                properties: n_vec.properties,
+                window_compositions: n_vec.window_compositions,
             });
+            return acc;
+        });
 
         WindowCompositionNode {
             properties: props,
@@ -236,10 +264,9 @@ pub mod compositor_tree {
     }
 
     // TODO: implement own errors
-    pub fn construct_session<T, C>(node_root: C) -> Result<Session<T>, io::Error>
+    pub fn construct_session<C>(node_root: C) -> Result<Session, io::Error>
     where
-        T: Programm,
-        C: CompositorNode<T> + Iterator<Item = C>,
+        C: CompositorNode + Iterator<Item = C>,
     {
         match node_root.get_node_type() {
             CompositorNodeType::Window => {
@@ -268,7 +295,7 @@ pub mod compositor_tree {
             CompositorNodeType::Root => {
                 let node_iter = node_root.clone().into_iter();
                 let comp_node = construct_composition_node(node_root);
-                let mut workspaces: Vec<Workspace<T>> = Vec::new();
+                let mut workspaces: Vec<Workspace> = Vec::new();
                 for (node, comp_node) in zip(node_iter, comp_node) {
                     workspaces.push(Workspace {
                         window_composition: comp_node,
@@ -279,7 +306,7 @@ pub mod compositor_tree {
             }
         }
     }
-    
+
     // JSON PARSING
     impl Into<JsonValue> for CompositorNodeType {
         fn into(self) -> JsonValue {
@@ -294,16 +321,13 @@ pub mod compositor_tree {
         }
     }
 
-    impl<T: Programm> Into<JsonValue> for WindowCompositionNode<T>
-    where
-        T: Clone,
-    {
+    impl Into<JsonValue> for WindowCompositionNode {
         fn into(self) -> JsonValue {
             let node_type: JsonValue = match self.window_compositions.is_empty() {
                 true => CompositorNodeType::Window.into(),
                 false => CompositorNodeType::WindowComposition.into(),
             };
-            let props: JsonValue = self.clone().properties.into();
+            let props: JsonValue = self.properties.clone().into();
             let node_iter = self.into_iter();
             let json_data = node_iter.fold(json::JsonValue::new_array(), |mut acc, node| {
                 let json: JsonValue = node.into();
@@ -315,10 +339,7 @@ pub mod compositor_tree {
         }
     }
 
-    impl<T: Programm> Into<JsonValue> for Workspace<T>
-    where
-        T: Clone,
-    {
+    impl Into<JsonValue> for Workspace {
         fn into(self) -> JsonValue {
             let node_type: JsonValue = CompositorNodeType::Workspace.into();
             let nodes: JsonValue = self.window_composition.window_compositions.into();
@@ -328,10 +349,7 @@ pub mod compositor_tree {
         }
     }
 
-    impl<T: Programm> Into<JsonValue> for Session<T>
-    where
-        T: Clone,
-    {
+    impl Into<JsonValue> for Session {
         fn into(self) -> JsonValue {
             let node_type: JsonValue = CompositorNodeType::Root.into();
 
