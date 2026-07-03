@@ -1,11 +1,11 @@
 @startuml
 package "Compositor Interfaces"{ 
-  interface CompositionNode<T> {
+  interface CompositionNode<<T: Programm>> {
     get_node_type() -> CompositionNodeType
     get_properties() -> WindowCompositionProperties<T>
     get_output() -> Option<String>
   }
-  interface Iterator <type = Item> {
+  interface Iterator <<type = Item>> {
     next(&mut self) -> Option<Self::Item>
   }
   interface Clone {
@@ -27,6 +27,8 @@ package "Session Config"{
     properties: WindowCompositionProperties<T>
     window_compositions: Vec<WindowCompositionNode<T>>
   }
+  Session -up-* Workspace
+  Workspace -up-* WindowCompositionNode
 }
 
 
@@ -48,8 +50,6 @@ struct ArbitraryNode {
   example
 }
 
-Session *-- Workspace
-Workspace *-- WindowCompositionNode
 ClonableIterator *-- SwayNode
 Iterator <|.. ClonableIterator : "Self must implement"
 
