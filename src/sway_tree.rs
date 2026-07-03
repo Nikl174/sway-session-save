@@ -76,6 +76,7 @@ impl CompositorNode for SwayNode {
         };
         WindowCompositionProperties {
             uuid: self.node.id,
+            name: self.node.clone().name,
             //output: self.node.output.clone(),
             geometry: WindowCompositionGeometry {
                 x_position: self.node.rect.x,
@@ -85,7 +86,10 @@ impl CompositorNode for SwayNode {
             },
             layout,
             programm: match &self.node.app_id {
-                Some(app) => Some(construct_programm_from_app_id(app.clone(), "".to_string())),
+                Some(app) => Some(construct_programm_from_app_id(
+                    app.clone(),
+                    self.node.name.clone().unwrap_or("".to_string()),
+                )),
                 None => None,
             },
             process_pid: self.node.pid,
@@ -94,6 +98,7 @@ impl CompositorNode for SwayNode {
     }
 
     fn get_ouptut(&self) -> Option<String> {
+        
         self.node.output.clone()
     }
 }

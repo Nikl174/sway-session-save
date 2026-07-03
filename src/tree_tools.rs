@@ -2,7 +2,7 @@ pub mod session_tree {
     use std::string::String;
 
     use abstract_programm::{construct_programm_from_app_id, DefaultProgramm, Programm};
-    use json::{object, JsonValue};
+    use json::{object, JsonValue::{self, Null}};
 
     pub mod abstract_programm {
         use std::{error::Error, fmt::Display, future::Future, io};
@@ -37,11 +37,7 @@ pub mod session_tree {
             }
 
             fn get_name(&self) -> String {
-                let mut launch_cmd: String = self.app_id.clone();
-                launch_cmd.push_str(" ");
-                launch_cmd.push_str(&self.launch_args);
-
-                return launch_cmd;
+                return self.launch_args.clone();
             }
 
             fn get_app_id(&self) -> String {
@@ -63,12 +59,9 @@ pub mod session_tree {
         //    }
         //}
         pub trait DynClone {
-            // Optional if you want them           vvvvvvvvvvvvv
             fn dyn_clone(&self) -> Box<dyn Programm /* + Send + Sync + 'static */>;
-            // Implicitly present already                          ^^^^^^^
         }
 
-        //         vvvvvvv Implicitly present
         impl<T: Programm + Clone + 'static> DynClone for T {
             fn dyn_clone(&self) -> Box<dyn Programm> {
                 Box::new(self.clone())
@@ -111,6 +104,7 @@ pub mod session_tree {
         pub programm: Option<Box<dyn Programm>>,
         // unneeded?
         pub process_pid: Option<i32>,
+        pub name: Option<String>,
         pub extra_properties: Option<ExtraProperties>,
     }
 
@@ -145,19 +139,18 @@ pub mod session_tree {
                 WindowCompositionLayout::HorizontalSplit => "HorizontalSplit".into(),
                 WindowCompositionLayout::Tabbed => "Tabbed".into(),
                 WindowCompositionLayout::Stacked => "Stacked".into(),
-                WindowCompositionLayout::None => "null".into(),
+                WindowCompositionLayout::None => Null,
             }
         }
     }
 
     impl Into<JsonValue> for WindowCompositionProperties {
         fn into(self) -> JsonValue {
-            let programm_str: String = match self.programm {
-                Some(prog) => prog.get_name(),
-                None => "".to_string(),
-            };
+            let name: JsonValue = self.name.into();
+            let pid: JsonValue = self.process_pid.into();
             object! {
             uuid: self.uuid,
+            name: name,
             layout: self.layout,
             geometry: object! {
                 x_position: self.geometry.x_position,
@@ -165,14 +158,15 @@ pub mod session_tree {
                 width: self.geometry.width,
                 heigth: self.geometry.heigth,
             },
-            //output: match &self.output {
-            //    None => "null".to_string(),
-            //    Some(o) => o.clone(),
-            //},
-            // TODO: IMPLEMENT programm abstraction
-            programm: programm_str,
-            process_pid: json::stringify(self.process_pid),
-            extra_properties: "NOT_USED",
+            programm: match self.programm {
+                Some(prog) => object! {
+                    name: prog.get_name(),
+                    app_id: prog.get_app_id(),
+                },
+                    None => Null,
+                },
+            process_pid: pid,
+            extra_properties: Null,
             }
         }
     }
@@ -344,7 +338,7 @@ pub mod compositor_tree {
             let node_type: JsonValue = CompositorNodeType::Workspace.into();
             let nodes: JsonValue = self.window_composition.window_compositions.into();
             let properties: JsonValue = self.window_composition.properties.into();
-            let output: JsonValue = json::stringify(self.output).into();
+            let output: JsonValue = self.output.into();
             object! {node_type: node_type, output: output, properties: properties, nodes: nodes}
         }
     }
