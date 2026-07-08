@@ -1,7 +1,13 @@
 # Sway Session Save Save and Restore the sway session WIP
 
-## Project structure ![Image Swaytree](./images/general_compositor_tree.png)
+## Project structure
+### Tree reconstruct interface
+![Image Swaytree](./images/general_compositor_tree.png)
 
+- one needs to implement composition Node and Possably ClonableIterator to integrate your Window Manager in the general composition tree
+### program startup manager WIP
+![Activity Diagram ProgramManager](./images/programm_manager.png)
+![Sequence Diagram ProgramManager](./images/program_manager_sequence.png)
 ## References
 -   [Proof of concept for saving a sway
 session](https://github.com/gumieri/sway-session)

@@ -1,0 +1,49 @@
+@startuml
+start
+:get programs list;
+
+
+->start programs;
+
+fork
+  partition worker{
+:async start program;
+repeat:gather current programs list;
+
+if (check STARTED condition of program) then (started)
+break
+endif
+->not started;
+
+backward:wait...;
+repeat while (ABORT condition met or FAILED?) is (no) not (yes)
+
+:remove from list;
+:notify main;
+
+end
+}
+fork again
+  partition main {
+    repeat:wait for notify or some time;
+repeat while (list Empty?) is (no) not (yes) 
+}
+end merge
+
+->all programs started or aborted;
+:gather current programs list;
+if (TODO check if recreation is possible) then (yes)
+
+:TODO recreate arrangement;
+
+else (no)
+
+:TODO warn;
+
+endif
+
+
+stop
+
+
+@enduml

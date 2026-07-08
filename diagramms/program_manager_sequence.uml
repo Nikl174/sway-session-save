@@ -1,0 +1,44 @@
+@startuml
+
+/'TODO Programs participant?'/
+participant Main
+participant Worker
+participant Programs
+
+
+Main -> Programs : Get programs list
+Programs --> Main : Current program list
+
+Main -> Worker ** : Start async worker for each program
+Worker -> Worker: Start program
+activate Worker
+
+Main -> Main : Wait for notify\nor timeout
+activate Main
+loop For each assigned program
+    Worker -> Programs : Query current programs
+    Programs --> Worker : Current state
+
+    alt State unclear
+      Worker -> Worker : Wait
+    Worker -> Programs : Query current programs
+    Programs --> Worker : Current state
+      else Program STARTED or ABORTED/FAILED
+      Worker -> Main : Remove program from list
+        Worker -> Main : notify()
+        destroy Worker
+    end
+end
+
+Main --> Main : List empty
+deactivate Main
+Main -> Programs : Gather current program list
+Programs --> Main : Current program list
+
+alt Recreation possible
+    Main -> Main : Recreate arrangement
+else Recreation not possible
+    Main -> Main : Warn user
+end
+
+@enduml
